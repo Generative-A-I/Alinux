@@ -120,11 +120,15 @@ class Agent:
 
     def decide(self, user_text: str) -> AgentAction:
         """Return a validated action, falling back safely when the LLM is unavailable."""
-        if not user_text.strip():
+        request = user_text.strip()
+        if not request:
             return AgentAction(action="respond_to_user", parameter="Please enter a request.")
+        fast_action = self._fast_action(request)
+        if fast_action is not None:
+            return fast_action
         try:
             if self.local:
-                content = self._local_completion(user_text.strip())
+                content = self._local_completion(request)
                 return AgentAction.model_validate(json.loads(content))
             if self._client is None:
                 return AgentAction(
@@ -137,7 +141,7 @@ class Agent:
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_text.strip()},
+                    {"role": "user", "content": request},
                 ],
             )
             content = response.choices[0].message.content or ""
@@ -157,6 +161,32 @@ class Agent:
             )
         except Exception as exc:  # noqa: BLE001 - model failures must not stop the shell
             return AgentAction(action="respond_to_user", parameter=f"Alinux model error: {exc}")
+
+    @staticmethod
+    def _fast_action(user_text: str) -> AgentAction | None:
+        """Resolve common OS operations and greetings without model latency."""
+        request = " ".join(user_text.lower().split())
+        if request in {"hi", "hello", "hey"}:
+            return AgentAction(action="respond_to_user", parameter="Alinux is ready. What should I do?")
+        if request in {"help", "what can you do", "commands"}:
+            return AgentAction(
+                action="respond_to_user",
+                parameter="I can show status, manage windows, adjust volume, and open terminal, browser, or file manager.",
+            )
+        if request in {"status", "system status", "show system status", "system information", "system info"}:
+            return AgentAction(action="system_command", parameter="status", thought="Fast OS route")
+        if request in {"windows", "list windows", "show windows", "active windows"}:
+            return AgentAction(action="system_command", parameter="windows", thought="Fast OS route")
+        if request in {"volume up", "increase volume", "louder", "turn volume up"}:
+            return AgentAction(action="system_command", parameter="volume up", thought="Fast OS route")
+        if request in {"volume down", "decrease volume", "quieter", "turn volume down"}:
+            return AgentAction(action="system_command", parameter="volume down", thought="Fast OS route")
+        if request in {"mute", "mute volume", "volume mute", "toggle mute"}:
+            return AgentAction(action="system_command", parameter="volume mute", thought="Fast OS route")
+        for app in ("terminal", "browser", "file manager"):
+            if request in {f"open {app}", f"launch {app}", app}:
+                return AgentAction(action="launch_app", parameter=app, thought="Fast OS route")
+        return None
 
     def _local_completion(self, user_text: str) -> str:
         """Call Ollama's native JSON-schema endpoint without extra dependencies."""
@@ -179,6 +209,6 @@ class Agent:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:
             result = json.load(response)
         return result["message"].get("content", "")

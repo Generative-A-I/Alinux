@@ -26,7 +26,15 @@ class AlinuxWindow:
 
         actions = ttk.Frame(frame)
         actions.pack(fill=tk.X, pady=(0, 12))
-        for label, request in (("System Status", "show system status"), ("Active Windows", "list windows"), ("Volume Up", "volume up"), ("Volume Down", "volume down"), ("Mute", "volume mute")):
+        for label, request in (
+            ("System Status", "show system status"),
+            ("Active Windows", "list windows"),
+            ("Volume Up", "volume up"),
+            ("Volume Down", "volume down"),
+            ("Mute", "volume mute"),
+            ("Terminal", "open terminal"),
+            ("Browser", "open browser"),
+        ):
             ttk.Button(actions, text=label, command=lambda text=request: self.run_request(text)).pack(side=tk.LEFT, padx=(0, 6))
 
         self.output = tk.Text(frame, height=16, state=tk.DISABLED, wrap=tk.WORD)

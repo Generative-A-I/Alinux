@@ -20,3 +20,16 @@ def test_without_api_key_does_not_call_model(monkeypatch):
     assert agent.local is True
     assert agent.provider == "ollama"
     assert agent.model == "llama3.2:3b"
+
+
+def test_greeting_bypasses_local_model(monkeypatch):
+    monkeypatch.setattr(
+        Agent,
+        "_local_completion",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("model should not be called")),
+    )
+
+    result = Agent().decide("hi")
+
+    assert result.action == "respond_to_user"
+    assert "ready" in result.parameter
