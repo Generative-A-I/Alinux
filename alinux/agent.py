@@ -32,6 +32,16 @@ class AgentAction:
             raise ValueError("Action parameter must be a string of at most 500 characters")
         if not isinstance(self.thought, str) or len(self.thought) > 1000:
             raise ValueError("Action thought must be a string of at most 1000 characters")
+        if self.action == "system_command" and self.parameter not in {
+            "status",
+            "windows",
+            "volume up",
+            "volume down",
+            "volume mute",
+        }:
+            raise ValueError(f"Unsupported system command: {self.parameter}")
+        if self.action == "launch_app" and self.parameter not in {"terminal", "browser", "file manager"}:
+            raise ValueError(f"Unsupported application: {self.parameter}")
 
     @classmethod
     def model_validate(cls, value: object) -> AgentAction:
@@ -90,7 +100,7 @@ class Agent:
         if use_default_groq_api:
             provider = "groq"
             configured_model = configured_model or "llama-3.3-70b-versatile"
-        self.model = configured_model or "smollm2:360m"
+        self.model = configured_model or "smollm2:135m"
         model_config = BUILT_IN_MODELS.get(self.model, {})
         self.provider = (provider or os.getenv("ALINUX_PROVIDER") or model_config.get("provider", "openai")).lower()
         self.base_url = base_url or os.getenv("ALINUX_API_BASE_URL") or model_config.get("base_url")
@@ -105,7 +115,7 @@ class Agent:
         self.local = not self.api_key
         if self.local:
             self.provider = "ollama"
-            self.model = model or os.getenv("ALINUX_LOCAL_MODEL", "smollm2:360m")
+            self.model = model or os.getenv("ALINUX_LOCAL_MODEL", "smollm2:135m")
             self.base_url = os.getenv("ALINUX_LOCAL_API_BASE_URL", "http://127.0.0.1:11434/v1")
         if self.api_key:
             try:
@@ -129,7 +139,14 @@ class Agent:
         try:
             if self.local:
                 content = self._local_completion(request)
-                return AgentAction.model_validate(json.loads(content))
+                try:
+                    return AgentAction.model_validate(json.loads(content))
+                except (json.JSONDecodeError, IndexError, TypeError, ValueError):
+                    parsed = self._parse_general_answer(request, content)
+                    if parsed is not None:
+                        return parsed
+                    retry_content = self._local_completion(request, clarify=True)
+                    return AgentAction.model_validate(json.loads(retry_content))
             if self._client is None:
                 return AgentAction(
                     action="respond_to_user",
@@ -166,8 +183,8 @@ class Agent:
     def _fast_action(user_text: str) -> AgentAction | None:
         """Resolve common OS operations and greetings without model latency."""
         request = " ".join(user_text.lower().split())
-        if request in {"hi", "hello", "hey"}:
-            return AgentAction(action="respond_to_user", parameter="Alinux is ready. What should I do?")
+        if request in {"hi", "hello", "hey", "how are you", "how are you?", "hello, how are you", "hello, how are you?"}:
+            return AgentAction(action="respond_to_user", parameter="I am ready and monitoring the system. What should I do?")
         if request in {"help", "what can you do", "commands"}:
             return AgentAction(
                 action="respond_to_user",
@@ -188,16 +205,45 @@ class Agent:
                 return AgentAction(action="launch_app", parameter=app, thought="Fast OS route")
         return None
 
-    def _local_completion(self, user_text: str) -> str:
+    @staticmethod
+    def _parse_general_answer(user_text: str, content: str) -> AgentAction | None:
+        """Accept useful model knowledge when a small model labels it incorrectly."""
+        normalized = " ".join(user_text.lower().split())
+        is_question = "?" in user_text or normalized.startswith(
+            ("what ", "who ", "when ", "where ", "why ", "how ")
+        )
+        if not is_question:
+            return None
+        try:
+            value = json.loads(content)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(value, dict) or value.get("action") != "system_command":
+            return None
+        answer = value.get("parameter")
+        if not isinstance(answer, str) or answer.strip() in {"", "..."}:
+            return None
+        return AgentAction(action="respond_to_user", parameter=answer.strip(), thought="Model knowledge response")
+
+    def _local_completion(self, user_text: str, clarify: bool = False) -> str:
         """Call Ollama's native JSON-schema endpoint without extra dependencies."""
+        system_message = SYSTEM_PROMPT
+        if clarify:
+            system_message += (
+                "\nThe previous output was invalid. This is probably a general knowledge question. "
+                "Use action=respond_to_user and put the actual answer in parameter. "
+                "Do not use a system command unless the user clearly requests a desktop operation."
+            )
         payload = json.dumps(
             {
                 "model": self.model,
                 "temperature": 0,
                 "format": _ACTION_SCHEMA,
                 "stream": False,
+                "keep_alive": "10m",
+                "options": {"num_predict": 96, "temperature": 0},
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_message},
                     {"role": "user", "content": user_text},
                 ],
             }
@@ -209,6 +255,6 @@ class Agent:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=180) as response:
             result = json.load(response)
         return result["message"].get("content", "")

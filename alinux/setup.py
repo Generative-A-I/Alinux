@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import urllib.request
 
-MODEL = "smollm2:360m"
+MODEL = "smollm2:135m"
 APT_PACKAGES = ("python3-tk", "xdotool", "alsa-utils", "procps", "curl")
 
 

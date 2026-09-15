@@ -21,7 +21,7 @@ alinux setup
 ```
 
 `alinux setup` installs Tkinter, desktop control tools, Ollama,
-starts the Ollama service, and downloads the lightweight `smollm2:360m` model.
+starts the Ollama service, and downloads the lightweight `smollm2:135m` model.
 It may ask for your sudo password.
 
 Ollama requires a 64-bit Linux architecture (`x86_64` or `aarch64`). On an
@@ -39,7 +39,7 @@ default model:
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull smollm2:360m
+ollama pull smollm2:135m
 alinux
 ```
 
