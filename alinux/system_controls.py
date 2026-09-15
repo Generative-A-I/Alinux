@@ -10,12 +10,12 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Sequence
 
 _DEFAULT_TIMEOUT = 8
 _ALLOWED_APPS = {
     "terminal": ("x-terminal-emulator",),
-    "browser": ("xdg-open", "https://www.google.com"),
     "file manager": ("xdg-open", os.path.expanduser("~")),
 }
 
@@ -35,13 +35,21 @@ def _tool_available(tool: str) -> bool:
     return shutil.which(tool) is not None
 
 
+def _browser_command() -> list[str] | None:
+    """Build the dependency-free Alinux browser command."""
+    return [sys.executable, "-m", "alinux.browser"]
+
+
 def launch_app(application: str) -> str:
     """Launch a known desktop application by friendly name."""
     name = application.strip().lower()
-    command = _ALLOWED_APPS.get(name)
+    if name == "browser":
+        command = _browser_command()
+    else:
+        command = _ALLOWED_APPS.get(name)
     if command is None:
         return f"I cannot launch {application!r}; supported apps are terminal, browser, and file manager."
-    if not _tool_available(command[0]):
+    if name != "browser" and not _tool_available(command[0]):
         return f"Cannot launch {name}: required command {command[0]!r} is not installed."
     try:
         subprocess.Popen(list(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

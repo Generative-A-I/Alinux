@@ -42,8 +42,8 @@ def main() -> int:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=("open", "install-fluxbox-menu"),
-        help="open the GUI or install its Fluxbox context-menu entry",
+        choices=("open", "setup", "install-fluxbox-menu", "remove-fluxbox-menu"),
+        help="open the GUI, set up dependencies, or manage the Fluxbox menu",
     )
     parser.add_argument(
         "--use-default-groq-api",
@@ -68,6 +68,19 @@ def main() -> int:
             print(f"Could not update the Fluxbox menu: {exc}")
             return 1
         return 0
+    if args.command == "remove-fluxbox-menu":
+        from .fluxbox import remove_fluxbox_menu
+
+        try:
+            print(remove_fluxbox_menu())
+        except OSError as exc:
+            print(f"Could not update the Fluxbox menu: {exc}")
+            return 1
+        return 0
+    if args.command == "setup":
+        from .setup import setup
+
+        return setup()
     _interactive(use_default_groq_api=args.use_default_groq_api)
     return 0
 

@@ -90,7 +90,7 @@ class Agent:
         if use_default_groq_api:
             provider = "groq"
             configured_model = configured_model or "llama-3.3-70b-versatile"
-        self.model = configured_model or "llama3.2:3b"
+        self.model = configured_model or "smollm2:360m"
         model_config = BUILT_IN_MODELS.get(self.model, {})
         self.provider = (provider or os.getenv("ALINUX_PROVIDER") or model_config.get("provider", "openai")).lower()
         self.base_url = base_url or os.getenv("ALINUX_API_BASE_URL") or model_config.get("base_url")
@@ -105,7 +105,7 @@ class Agent:
         self.local = not self.api_key
         if self.local:
             self.provider = "ollama"
-            self.model = model or os.getenv("ALINUX_LOCAL_MODEL", "llama3.2:3b")
+            self.model = model or os.getenv("ALINUX_LOCAL_MODEL", "smollm2:360m")
             self.base_url = os.getenv("ALINUX_LOCAL_API_BASE_URL", "http://127.0.0.1:11434/v1")
         if self.api_key:
             try:

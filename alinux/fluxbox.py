@@ -41,3 +41,27 @@ def install_fluxbox_menu(menu_path: str | os.PathLike[str] | None = None) -> str
             pass
         raise
     return f"Added Open Alinux to the Fluxbox menu at {path}. Restart or reconfigure Fluxbox to see it."
+
+
+def remove_fluxbox_menu(menu_path: str | os.PathLike[str] | None = None) -> str:
+    """Remove Alinux entries from the user's Fluxbox menu idempotently."""
+    path = Path(menu_path).expanduser() if menu_path else Path.home() / ".fluxbox" / "menu"
+    if not path.exists():
+        return f"No Fluxbox menu found at {path}."
+    lines = path.read_text(encoding="utf-8").splitlines()
+    filtered = [line for line in lines if "(Open Alinux)" not in line]
+    if len(filtered) == len(lines):
+        return f"Alinux is not in the Fluxbox menu at {path}."
+    content = "\n".join(filtered).rstrip() + "\n"
+    fd, temporary_path = tempfile.mkstemp(prefix=".alinux-menu-", dir=path.parent, text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as temporary_file:
+            temporary_file.write(content)
+        os.replace(temporary_path, path)
+    except Exception:
+        try:
+            os.unlink(temporary_path)
+        except OSError:
+            pass
+        raise
+    return f"Removed Alinux from the Fluxbox menu at {path}. Restart or reconfigure Fluxbox to update it."

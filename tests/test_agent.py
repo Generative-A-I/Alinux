@@ -19,7 +19,7 @@ def test_without_api_key_does_not_call_model(monkeypatch):
 
     assert agent.local is True
     assert agent.provider == "ollama"
-    assert agent.model == "llama3.2:3b"
+    assert agent.model == "smollm2:360m"
 
 
 def test_greeting_bypasses_local_model(monkeypatch):

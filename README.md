@@ -13,6 +13,17 @@ python -m pip install --upgrade --no-cache-dir --index-url https://pypi.org/simp
 python -c "import alinux; print(alinux.__version__)"
 ```
 
+On a fresh Debian 12 Fluxbox installation, the complete setup is:
+
+```bash
+python -m pip install alinux
+alinux setup
+```
+
+`alinux setup` installs Tkinter, desktop control tools, Ollama,
+starts the Ollama service, and downloads the lightweight `smollm2:360m` model.
+It may ask for your sudo password.
+
 The base package has no compiled model dependency. Use `python -m pip install
 alinux` when running without an LLM, or install the `openai` extra for OpenAI,
 Groq, and other OpenAI-compatible providers.
@@ -23,11 +34,21 @@ default model:
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.2:3b
+ollama pull smollm2:360m
 alinux
 ```
 
 Set `ALINUX_LOCAL_MODEL` to use another model already installed in Ollama.
+
+Alinux includes a small browser built from Python's standard library. It uses
+Tkinter, `urllib`, and `html.parser`, with no Chromium, Firefox, WebKit, Qt, or
+other browser engine. It supports navigation, back/forward, reload, links,
+HTML text, and basic HTTP(S) pages. JavaScript, plugins, and advanced CSS are
+not supported by this intentionally lightweight engine.
+
+```bash
+sudo apt install python3-tk
+```
 
 For model access, export a key and optionally choose a provider/model. Any
 OpenAI-compatible API can be configured with a custom endpoint:
@@ -81,6 +102,12 @@ inside the Fluxbox session:
 
 ```bash
 alinux install-fluxbox-menu
+```
+
+Remove the menu entry with:
+
+```bash
+alinux remove-fluxbox-menu
 ```
 
 Then restart or reconfigure Fluxbox. The installer uses the active Python
