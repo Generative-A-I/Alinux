@@ -99,6 +99,13 @@ class AlinuxBrowser:
         self.page.tag_configure("heading", font=("TkDefaultFont", 16, "bold"))
         self.navigate(start_url, add_history=True)
 
+    def _update_navigation(self) -> None:
+        """Enable history controls only when a destination exists."""
+        self.back_button.configure(state=tk.NORMAL if self.history_index > 0 else tk.DISABLED)
+        self.forward_button.configure(
+            state=tk.NORMAL if self.history_index + 1 < len(self.history) else tk.DISABLED
+        )
+
     def navigate(self, url: str, add_history: bool = True) -> None:
         url = url.strip()
         if not url:
@@ -168,7 +175,12 @@ class AlinuxBrowser:
 
 
 def main() -> int:
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:
+        print(f"Could not open Alinux Browser: {exc}")
+        print("Run it inside the Fluxbox desktop session with DISPLAY set.")
+        return 1
     AlinuxBrowser(root)
     root.mainloop()
     return 0

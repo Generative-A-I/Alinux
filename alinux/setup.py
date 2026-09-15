@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 import shutil
 import subprocess
 import urllib.request
@@ -28,6 +29,12 @@ def _ollama_running() -> bool:
         return False
 
 
+def _ollama_supported() -> bool:
+    """Ollama publishes Linux binaries for 64-bit x86/ARM, not i686."""
+    machine = platform.machine().lower()
+    return machine in {"x86_64", "amd64", "aarch64", "arm64"}
+
+
 def setup() -> int:
     """Install Debian dependencies, Ollama, and the local SmolLM2 model."""
     if shutil.which("apt-get") is None:
@@ -41,6 +48,12 @@ def setup() -> int:
     result = _run(prefix + ["apt-get", "install", "-y", *APT_PACKAGES])
     if result.returncode != 0:
         return result.returncode
+    if not _ollama_supported():
+        print(
+            f"Ollama local models are unavailable on {platform.machine()} (Ollama requires 64-bit Linux)."
+        )
+        print("Desktop setup is complete. Set GROQ_API_KEY or ALINUX_API_KEY to use a remote model.")
+        return 0
     if shutil.which("ollama") is None:
         print("Installing Ollama...")
         script = urllib.request.urlopen("https://ollama.com/install.sh", timeout=30).read().decode()

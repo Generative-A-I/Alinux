@@ -24,6 +24,11 @@ alinux setup
 starts the Ollama service, and downloads the lightweight `smollm2:360m` model.
 It may ask for your sudo password.
 
+Ollama requires a 64-bit Linux architecture (`x86_64` or `aarch64`). On an
+`i686`/32-bit system, setup installs the desktop portion and skips Ollama;
+use `GROQ_API_KEY` or `ALINUX_API_KEY` for a remote model, or install Debian
+64-bit to use local SmolLM2.
+
 The base package has no compiled model dependency. Use `python -m pip install
 alinux` when running without an LLM, or install the `openai` extra for OpenAI,
 Groq, and other OpenAI-compatible providers.
